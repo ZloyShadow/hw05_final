@@ -46,7 +46,6 @@ class PostFormsTests(TestCase):
         self.authorized_client.force_login(self.user)
 
     def test_create_post(self):
-        """Валидная форма создает запись в Post."""
         posts_count = Post.objects.count()
         text = 'Testtext'
         small_gif = (
@@ -94,7 +93,6 @@ class PostFormsTests(TestCase):
         )
 
     def test_edit_post(self):
-        """Валидная форма изменяет запись в Post."""
         edited_post = 'Исправленный текст'
         response = self.authorized_client.post(
             reverse(
@@ -113,7 +111,6 @@ class PostFormsTests(TestCase):
         )
 
     def test_creat_post_anonymous(self):
-        """Создание поста анонимным пользователем"""
         posts_count = Post.objects.count()
         response = self.client.post(
             reverse('posts:post_create'),
@@ -123,7 +120,6 @@ class PostFormsTests(TestCase):
             response, '/auth/login/?next=/create/')
 
     def test_post_edit_anonymous(self):
-        """Редактирование поста анонимным пользователем"""
         edited_post = 'Исправленный текст анонимом'
         response = self.client.post(
             reverse(
@@ -166,7 +162,6 @@ class CommentCreateFormTests(TestCase):
         self.authorized_client.force_login(self.user)
 
     def test_create_comment(self):
-        """Валидная форма создает запись в Comment."""
         comments_count = Comment.objects.count()
         text = 'Testcomment'
         form_data = {
@@ -180,12 +175,10 @@ class CommentCreateFormTests(TestCase):
             data=form_data,
             follow=True
         )
-        # Проверяем, сработал ли редирект
         self.assertRedirects(
             response, reverse(
                 'posts:post_detail', kwargs={'post_id': f'{post}'})
         )
-        # Проверяем, увеличилось ли число постов
         self.assertEqual(Comment.objects.count(), comments_count + 1)
         self.assertTrue(
             Comment.objects.filter(
