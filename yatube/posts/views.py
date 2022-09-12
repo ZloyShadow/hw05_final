@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from posts.forms import PostForm
 
-from .models import Group, Post
+from .models import Group, Post, Follow
 
 User = get_user_model()
 
@@ -92,6 +92,36 @@ def post_edit(request, post_id):
         'is_edit': True,
     }
     return render(request, 'posts/create_post.html', context)
+
+
+@login_required
+def follow_index(request):
+    posts = Post.objects.filter(
+        author__following__user=request.user)
+    paginator = Paginator(posts, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    context = {'page_obj': page_obj}
+    return render(request, 'posts/follow.html', context)
+
+
+@login_required
+def profile_follow(request, username):
+    author = get_object_or_404(User, username=username)
+    if author != request.user:
+        Follow.objects.get_or_create(user=request.user, author=author)
+    return redirect('posts:profile', author)
+
+
+@login_required
+def profile_unfollow(request, username):
+    user_follower = get_object_or_404(
+        Follow,
+        user=request.user,
+        author__username=username
+    )
+    user_follower.delete()
+    return redirect('posts:profile', username)
 
 
 def page_not_found(request, exception):
