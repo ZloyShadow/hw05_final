@@ -1,0 +1,59 @@
+
+{% extends 'base.html' %}
+
+
+{% block content %}
+  <head>  
+    <!-- Подключены иконки, стили и заполенены мета теги -->
+    <title>Пост {{ post.text|truncatechars:30 }}</title>
+  </head>
+  <div class="row">
+    <aside class="col-12 col-md-3">
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item">
+            Дата публикации:  {{ post.pub_date|date:"d E Y" }}
+        </li>
+          <!-- если у поста нет группа -->   
+          {% if post.group == None %}
+            Данный пост не принадлежит ни к одной из групп сайта.
+          {% else %}
+            <li class="list-group-item">
+              Группа: {{ post.group }}
+                <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
+          {% endif %}
+            </li>
+          <li class="list-group-item">
+            Автор: {{ post.author }}
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Всего постов автора:  <span >{{ count }}</span>
+          </li>
+          {% load thumbnail %}
+          <li class="list-group-item">
+            <article>
+              <ul>
+                <li>
+                  Автор: {{ post.author.get_full_name }} 
+                  <a href="{% url 'posts:profile' post.author %}">все посты пользователя</a>
+                </li>
+                <li>
+                  Дата публикации: {{ post.pub_date|date:"d E Y" }}
+                </li>
+              </ul>
+              {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
+                <img class="card-img my-2" src="{{ im.url }}">
+              {% endthumbnail %}
+              <p>{{ post.text }}</p>
+              <a href="{% url 'posts:post_detail' post.pk %}">подробная информация</a>
+            </article>
+          </li>
+      </ul>
+    </aside>
+    <article class="col-12 col-md-9">
+      <p>{{ post.text|linebreaksbr }}</p>
+    </article>
+  </div> 
+  <form method="post" action="{% url 'posts:post_edit' post.pk %}">{% csrf_token %}   
+    <button type="submit" class="btn btn-primary">Редактировать запись</button>
+  </form>
+{% endblock %}
