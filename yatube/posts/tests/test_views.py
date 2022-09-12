@@ -169,6 +169,8 @@ class PostPagesTest(TestCase):
         ))
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertNotIn(self.posts[0], response.context.get('page_obj'))
+
+
 class FollowViewsTest(TestCase):
     @classmethod
     def setUpClass(cls):
