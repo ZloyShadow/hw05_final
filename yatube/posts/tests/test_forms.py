@@ -94,6 +94,7 @@ class PostFormsTests(TestCase):
         )
 
     def test_edit_post(self):
+        """Валидная форма изменяет запись в Post."""
         edited_post = 'Исправленный текст'
         response = self.authorized_client.post(
             reverse(
@@ -165,6 +166,7 @@ class CommentCreateFormTests(TestCase):
         self.authorized_client.force_login(self.user)
 
     def test_create_comment(self):
+        """Валидная форма создает запись в Comment."""
         comments_count = Comment.objects.count()
         text = 'Testcomment'
         form_data = {
