@@ -38,28 +38,23 @@ class Post(models.Model):
     def __str__(self):
         return f"{self.text[:15]}"
 
+
 class Comment(models.Model):
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
-        related_name='comments',
-        verbose_name='Пост')
+        related_name='comments')
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='comments',
-        verbose_name='Автор')
-    text = models.TextField(
-        verbose_name='Коментарий')
+        related_name='comments')
+    text = models.TextField()
     created = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Создан')
+        auto_now_add=True)
     updated = models.DateTimeField(
-        auto_now=True,
-        verbose_name='Обнавлен')
+        auto_now=True)
     active = models.BooleanField(
-        default=True,
-        verbose_name='Активен')
+        default=True)
 
     class Meta:
         ordering = ['-created']
@@ -68,6 +63,7 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.text[:15]
+
 
 class Follow(models.Model):
     user = models.ForeignKey(

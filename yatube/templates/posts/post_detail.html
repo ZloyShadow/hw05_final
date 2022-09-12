@@ -1,116 +1,103 @@
-
-{% extends 'base.html' %}
-
-
+{% extends "base.html" %}
+{% load thumbnail %}
+{% block title %}Пост {{ post|truncatechars:30 }}{% endblock %}
 {% block content %}
-  <head>  
-    <!-- Подключены иконки, стили и заполенены мета теги -->
-    <title>Пост {{ post.text|truncatechars:30 }}</title>
-  </head>
-  <div class="row">
-    <aside class="col-12 col-md-3">
-      <ul class="list-group list-group-flush">
+<div class="row">
+  <aside class="col-12 col-md-3">
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item">
+        Дата публикации: {{ post.pub_date|date:'d E Y' }}
+      </li>
+        {% if post.group %}
         <li class="list-group-item">
-            Дата публикации:  {{ post.pub_date|date:"d E Y" }}
+          Группа: {{ post.group }}
+          <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
         </li>
-          <!-- если у поста нет группа -->   
-          {% if post.group == None %}
-            Данный пост не принадлежит ни к одной из групп сайта.
-          {% else %}
-            <li class="list-group-item">
-              Группа: {{ post.group }}
-                <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
-          {% endif %}
-            </li>
-          <li class="list-group-item">
-            Автор: {{ post.author }}
-          </li>
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            Всего постов автора:  <span >{{ count }}</span>
-          </li>
-          {% load thumbnail %}
-          <li class="list-group-item">
-            <article>
-              <ul>
-                <li>
-                  Автор: {{ post.author.get_full_name }} 
-                  <a href="{% url 'posts:profile' post.author %}">все посты пользователя</a>
-                </li>
-                <li>
-                  Дата публикации: {{ post.pub_date|date:"d E Y" }}
-                </li>
-              </ul>
-              {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
-                <img class="card-img my-2" src="{{ im.url }}">
-              {% endthumbnail %}
-              <p>{{ post.text }}</p>
-              <a href="{% url 'posts:post_detail' post.pk %}">подробная информация</a>
-            </article>
-          </li>
-      </ul>
-    </aside>
-    <article class="col-12 col-md-9">
-      <p>{{ post.text|linebreaksbr }}</p>
-    </article>
-  </div> 
-  <form method="post" action="{% url 'posts:post_edit' post.pk %}">{% csrf_token %}   
-    <button type="submit" class="btn btn-primary">Редактировать запись</button>
-  </form>
-  {% load user_filters %}
-  {% if comments.count != 0 %}
-  {% with comments.count as total_comments %}
-  <hr>
-  <figure>
-    <blockquote class="blockquote">
-      <div class="shadow-sm p-2 bg-white rounded">
-        Комментариев {{ total_comments }}
-      </div>
-    </blockquote>
-  </figure>
-  {% endwith %}
-  {% endif %}
+        {% endif %}
+      <li class="list-group-item">
+        Автор: {% if post.author.get_full_name %}{{ post.author.get_full_name }}{% else %}{{ post.author }}{% endif %}
+      </li>
+      <li class="list-group-item">
+        Всего постов автора: {{ post.author.posts.count }}
+      </li>
+      <li class="list-group-item">
+        <a href="{% url 'posts:profile' post.author %}">все посты пользователя</a>
+      </li>
+    </ul>
+  </aside>
+  <article class="col-12 col-md-9">
 
-  {% if user.is_authenticated %}
-    <div class="card my-4">
-      <h5 class="card-header">Добавить комментарий:</h5>
-        <div class="card-body">
-          <form method="post" action="{% url 'posts:add_comment' post.id %}">
-            {% csrf_token %}      
-            <div class="form-group mb-2">
-              {{ form.text|addclass:"form-control" }}
-            </div>
-            <button type="submit" class="btn btn-primary">Отправить комментарий</button>
-          </form>
+<div class="card bg-light" style="width: 100%">
+  {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
+  <img class="card-img-top" src="{{ im.url }}">
+  {% endthumbnail %}
+  <div class="card-body">
+    <h4 class="card-title">Заголовок</h4>
+    <p class="card-text">
+      {{ post.text|linebreaksbr }}
+    </p>
+    {% if post.author == requser %}
+      <a class="btn btn-primary" href="{% url 'posts:edit' post.id %}">
+        Редактировать запись
+      </a>
+    {% endif %}
+  </div>
+</div>
+    {% load user_filters %}
+    {% if comments.count != 0 %}
+    {% with comments.count as total_comments %}
+    <hr>
+    <figure>
+      <blockquote class="blockquote">
+        <div class="shadow-sm p-2 bg-white rounded">
+          Комментариев {{ total_comments }}
         </div>
-    </div>
-  {% endif %}
+      </blockquote>
+    </figure>
+    {% endwith %}
+    {% endif %}
 
-  {% for comment in comments %}
-    <div class="media mb-4">
-      <div class="media-body">
-        <div class="alert alert-primary" role="alert">
-          {{ comment.created|date:'d E Y' }} <a href="{% url 'posts:profile' comment.author.username %}">{{ comment.author.get_full_name }}</a>:
+    {% if user.is_authenticated %}
+      <div class="card my-4">
+        <h5 class="card-header">Добавить комментарий:</h5>
+          <div class="card-body">
+            <form method="post" action="{% url 'posts:add_comment' post.id %}">
+              {% csrf_token %}      
+              <div class="form-group mb-2">
+                {{ form.text|addclass:"form-control" }}
+              </div>
+              <button type="submit" class="btn btn-primary">Отправить комментарий</button>
+            </form>
+          </div>
+      </div>
+    {% endif %}
+
+    {% for comment in comments %}
+      <div class="media mb-4">
+        <div class="media-body">
+          <div class="alert alert-primary" role="alert">
+            {{ comment.created|date:'d E Y' }} <a href="{% url 'posts:profile' comment.author.username %}">{{ comment.author.get_full_name }}</a>:
+          </div>
+          <figure>
+            <blockquote class="blockquote">
+              <div class="shadow-sm p-3 bg-white">
+                {{ comment.text|linebreaks }}
+              </div>
+            </blockquote>
+          </figure>
         </div>
-        <figure>
-          <blockquote class="blockquote">
-            <div class="shadow-sm p-3 bg-white">
-              {{ comment.text|linebreaks }}
-            </div>
-          </blockquote>
-        </figure>
       </div>
-    </div>
 
-  {% empty %}
-  <hr>
-  <figure>
-    <blockquote class="blockquote">
-      <div class="shadow-sm p-2 bg-white rounded">
-        Комментариев нет, будь первым! 
-      </div>
-    </blockquote>
-  </figure>
-  {% endfor %}
+    {% empty %}
+    <hr>
+    <figure>
+      <blockquote class="blockquote">
+        <div class="shadow-sm p-2 bg-white rounded">
+          Комментариев нет, будь первым! 
+        </div>
+      </blockquote>
+    </figure>
+    {% endfor %}
 
 </article>
 </div>
