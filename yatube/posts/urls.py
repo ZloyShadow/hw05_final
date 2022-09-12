@@ -2,7 +2,8 @@
 from django.urls import path
 from posts.views import (group_posts, index, post_create,
                          post_edit, post_view, profile, page_not_found,
-                         follow_index, profile_follow, profile_unfollow)
+                         follow_index, profile_follow, profile_unfollow,
+                         add_comment)
 
 app_name = 'posts'
 urlpatterns = [
@@ -14,6 +15,8 @@ urlpatterns = [
     path('follow/', follow_index, name='follow_index'),
     path("404/", page_not_found, name="404"),
     path('', index, name='index'),
+    path(
+        'posts/<int:post_id>/comment/', add_comment, name='add_comment'),
     path(
         'profile/<str:username>/follow/',
         profile_follow,

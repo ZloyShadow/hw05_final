@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
-from posts.forms import PostForm
+from posts.forms import PostForm, CommentForm
 
 from .models import Group, Post, Follow
 
@@ -53,12 +53,26 @@ def profile(request, username):
 
 def post_view(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
+    comments = post.comments.all()
     count = Post.objects.filter(author=post.author).count()
 
     context = {'post': post,
                'count': count,
+               'comments': comments,
                }
     return render(request, 'posts/post_detail.html', context)
+
+
+@login_required
+def add_comment(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    form = CommentForm(request.POST or None)
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
+    return redirect('posts:post_detail', post_id=post_id)
 
 
 @login_required
