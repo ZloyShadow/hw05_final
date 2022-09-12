@@ -37,7 +37,7 @@ class PostFormTests(TestCase):
             'group': self.group.id}
         response = self.authorized_user.post(
             reverse(
-                'posts:edit',
+                'posts:post_edit',
                 args=[post.id]),
             data=form_data,
             follow=True)
