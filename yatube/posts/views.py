@@ -54,13 +54,15 @@ def profile(request, username):
 def post_view(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     comments = post.comments.all()
-    count = Post.objects.filter(author=post.author).count()
-
-    context = {'post': post,
-               'count': count,
-               'comments': comments,
-               }
-    return render(request, 'posts/post_detail.html', context)
+    form = CommentForm()
+    template = 'posts/post_detail.html'
+    context = {
+        'post': post,
+        'requser': request.user,
+        'comments': comments,
+        'form': form,
+    }
+    return render(request, template, context)
 
 
 @login_required
@@ -87,7 +89,7 @@ def post_create(request):
 
 
 @login_required
-def post_edit(request, post_id):
+def edit(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     if post.author != request.user:
         return redirect('posts:post_detail', post_id=post_id)

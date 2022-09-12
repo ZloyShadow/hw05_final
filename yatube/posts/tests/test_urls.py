@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
 from ..models import Group, Post
+from django.urls import reverse
 
 User = get_user_model()
 
@@ -14,13 +15,17 @@ class PostsURLTests(TestCase):
         cls.user_not_author = User.objects.create_user(
             username='test_user_not_author'
         )
+        cls.user_author = User.objects.create_user(
+            username='user_author')
+        cls.another_user = User.objects.create_user(
+            username='another_user')
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='tst-slug',
             description='Тестовое описание',
         )
         cls.post = Post.objects.create(
-            author=cls.user,
+            author=cls.user_author,
             group=cls.group,
             text='Тестовый пост',
         )
@@ -29,6 +34,7 @@ class PostsURLTests(TestCase):
         self.guest_client = Client()
         self.auth_client = Client()
         self.auth_client_not_author = Client()
+        self.post_author = Client()
 
         self.auth_client.force_login(PostsURLTests.user)
         self.auth_client_not_author.force_login(PostsURLTests.user_not_author)
@@ -75,20 +81,20 @@ class PostsURLTests(TestCase):
         self.assertEqual(auth_response.status_code, 404)
 
     def test_urls_uses_correct_template(self):
-        group = PostsURLTests.group
-        user = PostsURLTests.user
-        post = PostsURLTests.post
-
-        url_templates_names = {
-            '/': 'posts/index.html',
-            f'/group/{group.slug}/': 'posts/group_list.html',
-            f'/profile/{user.username}/': 'posts/profile.html',
-            f'/posts/{post.pk}/': 'posts/post_detail.html',
-            f'/posts/{post.pk}/edit/': 'posts/create_post.html',
-            '/create/': 'posts/create_post.html',
+        templates_url_names = {
+            reverse(
+                'posts:index'): 'posts/index.html',
+            reverse(
+                'posts:group_list',
+                kwargs={'slug': self.group.slug}): 'posts/group_list.html',
+            reverse(
+                'posts:profile',
+                kwargs={'username': self.user_author}): 'posts/profile.html',
+            reverse(
+                'posts:post_detail',
+                kwargs={'post_id': self.post.id}): 'posts/post_detail.html',
         }
-
-        for address, template in url_templates_names.items():
-            with self.subTest(address=address):
-                response = self.auth_client.get(address)
+        for adress, template in templates_url_names.items():
+            with self.subTest(adress=adress):
+                response = self.post_author.get(adress)
                 self.assertTemplateUsed(response, template)

@@ -5,8 +5,9 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.core.cache import cache
 
-from posts.models import Group, Post
+from posts.models import Group, Post, Follow
 
 User = get_user_model()
 
@@ -54,8 +55,6 @@ class PostPagesTest(TestCase):
                 'posts:profile', kwargs={'username': self.user.username}),
             'posts/group_list.html': reverse(
                 'posts:group_list', kwargs={'slug': self.group.slug}),
-            'posts/post_detail.html': reverse(
-                'posts:post_detail', kwargs={'post_id': self.posts[1].pk}),
             'posts/create_post.html': reverse('posts:post_create'),
         }
         for template, reverse_name in templates_pages.items():
@@ -147,33 +146,22 @@ class PostPagesTest(TestCase):
                 form_field = response.context.get('form').fields.get(value)
                 self.assertIsInstance(form_field, expected)
 
-    def test_edit_form_is_correct(self):
-        """Поля формы на странице редактирования поста корректного типа"""
-        response = self.authorized_client.get(reverse(
-            'posts:post_edit', kwargs={'post_id': self.posts[0].pk}))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        form_fields = {
-            'text': forms.fields.CharField,
-            'group': forms.fields.ChoiceField
+    def test_forms_show_correct(self):
+        url_filds = {
+            reverse('posts:post_create'),
         }
-        for value, expected in form_fields.items():
-            with self.subTest(value=value):
-                form_field = response.context.get('form').fields.get(value)
-                self.assertIsInstance(form_field, expected)
-
-    def test_edit_form_suggests_correct_post(self):
-        response = self.authorized_client.get(reverse(
-            'posts:post_edit', kwargs={'post_id': self.posts[0].pk}))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        actual_post = response.context['post']
-        self.assertEqual(actual_post, self.posts[0])
-
-    def test_post_detail_shows_correct_post(self):
-        response = self.authorized_client.get(reverse(
-            'posts:post_detail', kwargs={'post_id': self.posts[0].pk}))
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        actual_post = response.context['post']
-        self.assertEqual(actual_post, self.posts[0])
+        for reverse_page in url_filds:
+            with self.subTest(reverse_page=reverse_page):
+                response = self.authorized_client.get(reverse_page)
+                self.assertIsInstance(
+                    response.context['form'].fields['text'],
+                    forms.fields.CharField)
+                self.assertIsInstance(
+                    response.context['form'].fields['group'],
+                    forms.fields.ChoiceField)
+                self.assertIsInstance(
+                    response.context['form'].fields['image'],
+                    forms.fields.ImageField)
 
     def test_new_post_not_in_incorrect_group(self):
         response = self.authorized_client.get(reverse(
@@ -181,3 +169,69 @@ class PostPagesTest(TestCase):
         ))
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertNotIn(self.posts[0], response.context.get('page_obj'))
+class FollowViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.post_autor = User.objects.create(
+            username='post_autor',
+        )
+        cls.post_follower = User.objects.create(
+            username='post_follower',
+        )
+        cls.post = Post.objects.create(
+            text='Подпишись на меня',
+            author=cls.post_autor,
+        )
+
+    def setUp(self):
+        cache.clear()
+        self.author_client = Client()
+        self.author_client.force_login(self.post_follower)
+        self.follower_client = Client()
+        self.follower_client.force_login(self.post_autor)
+
+    def test_follow_on_user(self):
+        """Проверка подписки на пользователя."""
+        count_follow = Follow.objects.count()
+        self.follower_client.post(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': self.post_follower}))
+        follow = Follow.objects.all().latest('id')
+        self.assertEqual(Follow.objects.count(), count_follow + 1)
+        self.assertEqual(follow.author_id, self.post_follower.id)
+        self.assertEqual(follow.user_id, self.post_autor.id)
+
+    def test_unfollow_on_user(self):
+        """Проверка отписки от пользователя."""
+        Follow.objects.create(
+            user=self.post_autor,
+            author=self.post_follower)
+        count_follow = Follow.objects.count()
+        self.follower_client.post(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': self.post_follower}))
+        self.assertEqual(Follow.objects.count(), count_follow - 1)
+
+    def test_follow_on_authors(self):
+        """Проверка записей у тех кто подписан."""
+        post = Post.objects.create(
+            author=self.post_autor,
+            text="Подпишись на меня")
+        Follow.objects.create(
+            user=self.post_follower,
+            author=self.post_autor)
+        response = self.author_client.get(
+            reverse('posts:follow_index'))
+        self.assertIn(post, response.context['page_obj'].object_list)
+
+    def test_notfollow_on_authors(self):
+        """Проверка записей у тех кто не подписан."""
+        post = Post.objects.create(
+            author=self.post_autor,
+            text="Подпишись на меня")
+        response = self.author_client.get(
+            reverse('posts:follow_index'))
+        self.assertNotIn(post, response.context['page_obj'].object_list)
