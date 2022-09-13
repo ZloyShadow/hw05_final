@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
@@ -29,11 +30,6 @@ class PostFormsTests(TestCase):
             slug='test-slug',
             description='test-descrp',
         )
-        cls.post = Post.objects.create(
-            text='test-text',
-            author=cls.user,
-            group=cls.group,
-        )
         cls.form = PostForm()
 
     @classmethod
@@ -42,6 +38,7 @@ class PostFormsTests(TestCase):
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
+        self.guest_user = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
@@ -93,22 +90,27 @@ class PostFormsTests(TestCase):
         )
 
     def test_edit_post(self):
-        edited_post = 'Исправленный текст'
+        """Проверка редактирования записи авторизированным клиентом."""
+        post = Post.objects.create(
+            text='Текст поста для редактирования',
+            author=self.user)
+        form_data = {
+            'text': 'Отредактированный текст поста',
+            'group': self.group.id}
         response = self.authorized_client.post(
             reverse(
-                'posts:post_edit', kwargs={'post_id': f'{self.post.pk}'}
-            ),
-            data={'text': edited_post},
-            follow=True
-        )
-        test_post = Post.objects.get(id=f'{self.post.pk}')
-        self.assertEqual(test_post.text, edited_post)
-        self.assertEqual(test_post.author_id, self.user.pk)
-        self.assertEqual(test_post.group_id, None)
+                'posts:edit',
+                args=[post.id]),
+            data=form_data,
+            follow=True)
         self.assertRedirects(
-            response, reverse(
-                'posts:post_detail', kwargs={'post_id': f'{self.post.pk}'})
-        )
+            response,
+            reverse('posts:post_detail', kwargs={'post_id': post.id}))
+        post_one = Post.objects.latest('id')
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(post_one.text, form_data['text'])
+        self.assertEqual(post_one.author, self.user)
+        self.assertEqual(post_one.group_id, form_data['group'])
 
     def test_creat_post_anonymous(self):
         posts_count = Post.objects.count()
@@ -120,19 +122,20 @@ class PostFormsTests(TestCase):
             response, '/auth/login/?next=/create/')
 
     def test_post_edit_anonymous(self):
-        edited_post = 'Исправленный текст анонимом'
-        response = self.client.post(
-            reverse(
-                'posts:post_edit', kwargs={'post_id': f'{self.post.pk}'}
-            ),
-            data={'text': edited_post},
+        posts_count = Post.objects.count()
+        form_data = {
+            'text': 'Текст поста',
+            'group': self.group.id,
+        }
+        response = self.guest_user.post(
+            reverse('posts:post_create'),
+            data=form_data,
             follow=True
         )
-        self.assertNotEqual(self.post.text, edited_post)
-        self.assertRedirects(
-            response, (
-                f'/auth/login/?next=/posts/{self.post.pk}/edit/')
-        )
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        redirect = reverse('login') + '?next=' + reverse('posts:post_create')
+        self.assertRedirects(response, redirect)
+        self.assertEqual(Post.objects.count(), posts_count)
 
 
 class CommentCreateFormTests(TestCase):
