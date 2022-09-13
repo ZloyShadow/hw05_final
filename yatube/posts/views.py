@@ -7,47 +7,33 @@ from django.shortcuts import get_object_or_404, redirect, render
 from posts.forms import PostForm, CommentForm
 
 from .models import Group, Post, Follow
+from .utils import get_page_context
 
 User = get_user_model()
 
 
 def index(request):
-    posts = Post.objects.all()
-    paginator = Paginator(posts, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    context = {
-        'posts': posts,
-        'page_obj': page_obj,
-    }
+    context = get_page_context(Post.objects.all(), request)
     return render(request, 'posts/index.html', context)
 
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     posts = group.posts.select_related('author')
-    paginator = Paginator(posts, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
     context = {
         'group': group,
-        'page_obj': page_obj,
-
+        'posts': posts,
     }
-
+    context.update(get_page_context(group.posts.all(), request))
     return render(request, 'posts/group_list.html', context)
 
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    paginator = Paginator(author.posts.all(), 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {'author': author,
-               'page_obj': page_obj,
-
-               }
+    context = {
+        'author': author,
+    }
+    context.update(get_page_context(author.posts.all(), request))
     return render(request, 'posts/profile.html', context)
 
 
@@ -137,12 +123,3 @@ def profile_unfollow(request, username):
     )
     user_follower.delete()
     return redirect('posts:profile', username)
-
-
-def page_not_found(request, exception):
-    return render(
-        request,
-        "misc/404.html",
-        {"path": request.path},
-        status=404
-    )

@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
+from http import HTTPStatus
 
 from ..models import Group, Post
 from django.urls import reverse
@@ -56,8 +57,8 @@ class PostsURLTests(TestCase):
                 guest_response = self.guest_client.get(address, follow=True)
                 auth_response = self.auth_client.get(address)
 
-                self.assertEqual(guest_response.status_code, 200)
-                self.assertEqual(auth_response.status_code, 200)
+                self.assertEqual(guest_response.status_code, HTTPStatus.OK)
+                self.assertEqual(auth_response.status_code, HTTPStatus.OK)
 
     def test_create_post_url_exists_at_desired_location(self):
         address = f'{"/create/"}'
@@ -69,7 +70,7 @@ class PostsURLTests(TestCase):
             guest_response,
             f'{"/auth/login/?next=/create/"}'
         )
-        self.assertEqual(auth_response.status_code, 200)
+        self.assertEqual(auth_response.status_code, HTTPStatus.OK)
 
     def test_404_error_return_for_unexisting_page(self):
         address = f'{"/fake/"}'
@@ -77,8 +78,8 @@ class PostsURLTests(TestCase):
         guest_response = self.guest_client.get(address, follow=True)
         auth_response = self.auth_client.get(address)
 
-        self.assertEqual(guest_response.status_code, 404)
-        self.assertEqual(auth_response.status_code, 404)
+        self.assertEqual(guest_response.status_code, HTTPStatus.NOT_FOUND)
+        self.assertEqual(auth_response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_urls_uses_correct_template(self):
         templates_url_names = {
